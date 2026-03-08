@@ -11,6 +11,13 @@ app = FastAPI(title="AttritionIQ Dashboard")
 def root():
     return {"message": "AttritionIQ API", "status": "healthy"}
 
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "database": "connected" if os.path.exists(DB_PATH) else "initializing"
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
@@ -22,6 +29,10 @@ if __name__ == "__main__":
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    ensure_db_exists()
 
 # ---------- Configuration ----------
 DB_DIR = "db"
