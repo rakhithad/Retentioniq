@@ -1,25 +1,13 @@
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from fastapi import FastAPI
 
-HOST = "localhost"
-PORT = 8000
+# ---------- App setup ----------
+app = FastAPI(title="AttritionIQ Dashboard")
 
-
-class SimpleHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
-
-        message = "<h1>Hello from Python app.py!</h1>"
-        self.wfile.write(message.encode("utf-8"))
-
+# ---------- Routes ----------
+@app.get("/")
+def root():
+    return {"message": "AttritionIQ API", "status": "healthy"}
 
 if __name__ == "__main__":
-    server = HTTPServer((HOST, PORT), SimpleHandler)
-    print(f"Server running at http://{HOST}:{PORT}")
-
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("\nServer stopped")
-        server.server_close()
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
