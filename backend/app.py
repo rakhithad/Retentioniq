@@ -121,6 +121,108 @@ class EmployeeData(BaseModel):
     yearsSinceLastPromotion: Optional[int] = None
     yearsWithCurrManager: Optional[int] = None
 
+
+# ---------- Load ML Model ----------
+MODEL_PATH = "rf_model_optimized.pkl"
+LABEL_ENCODERS_PATH = "label_encoders.pkl"
+CATEGORICAL_COLUMNS = ['BusinessTravel', 'Department', 'EducationField', 'Gender', 'JobRole', 'MaritalStatus', 'OverTime']
+
+try:
+    model = joblib.load(MODEL_PATH)
+except:
+    model = None
+
+try:
+    label_encoders = joblib.load(LABEL_ENCODERS_PATH)
+except:
+    label_encoders = None
+
+# ---------- Feature Engineering ----------
+def prepare_features_for_prediction(data: dict) -> pd.DataFrame:
+    feature_columns = [
+        'Age', 'BusinessTravel', 'DailyRate', 'Department', 'DistanceFromHome',
+        'Education', 'EducationField', 'EnvironmentSatisfaction', 'Gender',
+        'HourlyRate', 'JobInvolvement', 'JobLevel', 'JobRole', 'JobSatisfaction',
+        'MaritalStatus', 'MonthlyIncome', 'MonthlyRate', 'NumCompaniesWorked',
+        'OverTime', 'PercentSalaryHike', 'PerformanceRating', 'RelationshipSatisfaction',
+        'StockOptionLevel', 'TotalWorkingYears', 'TrainingTimesLastYear',
+        'WorkLifeBalance', 'YearsAtCompany', 'YearsInCurrentRole',
+        'YearsSinceLastPromotion', 'YearsWithCurrManager'
+    ]
+    features = pd.DataFrame(index=[0], columns=feature_columns)
+    
+    numeric_mappings = {
+        'age': 'Age', 'dailyRate': 'DailyRate', 'distanceFromHome': 'DistanceFromHome',
+        'hourlyRate': 'HourlyRate', 'jobLevel': 'JobLevel', 'monthlyIncome': 'MonthlyIncome',
+        'monthlyRate': 'MonthlyRate', 'numCompaniesWorked': 'NumCompaniesWorked',
+        'percentSalaryHike': 'PercentSalaryHike', 'stockOptionLevel': 'StockOptionLevel',
+        'totalWorkingYears': 'TotalWorkingYears', 'trainingTimesLastYear': 'TrainingTimesLastYear',
+        'yearsAtCompany': 'YearsAtCompany', 'yearsInCurrentRole': 'YearsInCurrentRole',
+        'yearsSinceLastPromotion': 'YearsSinceLastPromotion', 'yearsWithCurrManager': 'YearsWithCurrManager'
+    }
+    
+    for data_key, feature_key in numeric_mappings.items():
+        features.loc[0, feature_key] = data.get(data_key, 0)
+    
+    label_mappings = {
+        'education': 'Education', 'environmentSatisfaction': 'EnvironmentSatisfaction',
+        'jobInvolvement': 'JobInvolvement', 'jobSatisfaction': 'JobSatisfaction',
+        'performanceRating': 'PerformanceRating', 'relationshipSatisfaction': 'RelationshipSatisfaction',
+        'workLifeBalance': 'WorkLifeBalance'
+    }
+    
+    for data_key, feature_key in label_mappings.items():
+        features.loc[0, feature_key] = data.get(data_key, 1)
+    
+    categorical_mappings = {
+        'businessTravel': 'BusinessTravel', 'department': 'Department',
+        'educationField': 'EducationField', 'gender': 'Gender',
+        'jobRole': 'JobRole', 'maritalStatus': 'MaritalStatus', 'overTime': 'OverTime'
+    }
+    
+    if label_encoders:
+        for data_key, feature_key in categorical_mappings.items():
+            value = data.get(data_key)
+            if value and feature_key in label_encoders:
+                try:
+                    features.loc[0, feature_key] = label_encoders[feature_key].transform([str(value)])[0]
+                except:
+                    features.loc[0, feature_key] = 0
+            else:
+                features.loc[0, feature_key] = 0
+    else:
+        for _, feature_key in categorical_mappings.items():
+            features.loc[0, feature_key] = 0
+    
+    features = features.infer_objects(copy=False).fillna(0)
+    numeric_columns = [col for col in features.columns if col not in CATEGORICAL_COLUMNS]
+    for col in numeric_columns:
+        features[col] = pd.to_numeric(features[col], errors='coerce').fillna(0)
+    
+    return features
+
+def predict_attrition(employee_data: dict) -> Dict[str, Any]:
+    if model is None:
+        return {'prediction': 'No', 'probability': 0.25, 'risk_level': 'Low', 'confidence': 0.75}
+    try:
+        features = prepare_features_for_prediction(employee_data)
+        prediction = model.predict(features)[0]
+        probability = model.predict_proba(features)[0]
+        attrition_prob = probability[1] if len(probability) > 1 else probability[0]
+        confidence = max(probability) if len(probability) > 1 else abs(0.5 - probability[0]) + 0.5
+        
+        risk_level = 'High' if attrition_prob >= 0.7 else 'Medium' if attrition_prob >= 0.4 else 'Low'
+        
+        return {
+            'prediction': 'Yes' if prediction == 1 else 'No',
+            'probability': float(attrition_prob),
+            'risk_level': risk_level,
+            'confidence': float(confidence)
+        }
+    except:
+        return {'prediction': 'No', 'probability': 0.25, 'risk_level': 'Low', 'confidence': 0.75}
+
+
 # ---------- Routes ----------
 @app.get("/")
 def root():
@@ -172,7 +274,7 @@ def login_employee(payload: EmployeeLogin):
         }
     finally:
         conn.close()
-        
+
 
 @app.get("/health")
 def health_check():
