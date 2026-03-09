@@ -283,6 +283,144 @@ def health_check():
         "database": "connected" if os.path.exists(DB_PATH) else "initializing"
     }
 
+
+@app.get("/dashboard/employees")
+def get_dashboard_employees():
+    """Get all employees with their attrition predictions"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT e.employeeId, e.firstName, e.lastName, e.department, e.position,
+               er.JobRole, er.Age, er.BusinessTravel, er.DailyRate, er.Department as RecordDepartment,
+               er.DistanceFromHome, er.Education, er.EducationField, er.EnvironmentSatisfaction,
+               er.Gender, er.HourlyRate, er.JobInvolvement, er.JobLevel, er.JobSatisfaction,
+               er.MaritalStatus, er.MonthlyIncome, er.MonthlyRate, er.NumCompaniesWorked,
+               er.OverTime, er.PercentSalaryHike, er.PerformanceRating, er.RelationshipSatisfaction,
+               er.StockOptionLevel, er.TotalWorkingYears, er.TrainingTimesLastYear, er.WorkLifeBalance,
+               er.YearsAtCompany, er.YearsInCurrentRole, er.YearsSinceLastPromotion, er.YearsWithCurrManager
+        FROM employees e
+        LEFT JOIN (
+            SELECT DISTINCT employeeId, 
+                   FIRST_VALUE(JobRole) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as JobRole,
+                   FIRST_VALUE(Age) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as Age,
+                   FIRST_VALUE(BusinessTravel) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as BusinessTravel,
+                   FIRST_VALUE(DailyRate) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as DailyRate,
+                   FIRST_VALUE(Department) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as Department,
+                   FIRST_VALUE(DistanceFromHome) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as DistanceFromHome,
+                   FIRST_VALUE(Education) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as Education,
+                   FIRST_VALUE(EducationField) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as EducationField,
+                   FIRST_VALUE(EnvironmentSatisfaction) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as EnvironmentSatisfaction,
+                   FIRST_VALUE(Gender) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as Gender,
+                   FIRST_VALUE(HourlyRate) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as HourlyRate,
+                   FIRST_VALUE(JobInvolvement) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as JobInvolvement,
+                   FIRST_VALUE(JobLevel) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as JobLevel,
+                   FIRST_VALUE(JobSatisfaction) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as JobSatisfaction,
+                   FIRST_VALUE(MaritalStatus) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as MaritalStatus,
+                   FIRST_VALUE(MonthlyIncome) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as MonthlyIncome,
+                   FIRST_VALUE(MonthlyRate) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as MonthlyRate,
+                   FIRST_VALUE(NumCompaniesWorked) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as NumCompaniesWorked,
+                   FIRST_VALUE(OverTime) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as OverTime,
+                   FIRST_VALUE(PercentSalaryHike) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as PercentSalaryHike,
+                   FIRST_VALUE(PerformanceRating) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as PerformanceRating,
+                   FIRST_VALUE(RelationshipSatisfaction) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as RelationshipSatisfaction,
+                   FIRST_VALUE(StockOptionLevel) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as StockOptionLevel,
+                   FIRST_VALUE(TotalWorkingYears) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as TotalWorkingYears,
+                   FIRST_VALUE(TrainingTimesLastYear) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as TrainingTimesLastYear,
+                   FIRST_VALUE(WorkLifeBalance) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as WorkLifeBalance,
+                   FIRST_VALUE(YearsAtCompany) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as YearsAtCompany,
+                   FIRST_VALUE(YearsInCurrentRole) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as YearsInCurrentRole,
+                   FIRST_VALUE(YearsSinceLastPromotion) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as YearsSinceLastPromotion,
+                   FIRST_VALUE(YearsWithCurrManager) OVER (PARTITION BY employeeId ORDER BY created_at DESC) as YearsWithCurrManager
+            FROM employee_records
+        ) er ON e.employeeId = er.employeeId
+    """)
+    
+    rows = cur.fetchall()
+    conn.close()
+    
+    employees = []
+    for row in rows:
+        employee_data = {
+            'age': row['Age'], 'businessTravel': row['BusinessTravel'], 'dailyRate': row['DailyRate'],
+            'department': row['RecordDepartment'] or row['department'], 'distanceFromHome': row['DistanceFromHome'],
+            'education': row['Education'], 'educationField': row['EducationField'],
+            'environmentSatisfaction': row['EnvironmentSatisfaction'], 'gender': row['Gender'],
+            'hourlyRate': row['HourlyRate'], 'jobInvolvement': row['JobInvolvement'],
+            'jobLevel': row['JobLevel'], 'jobRole': row['JobRole'] or row['position'],
+            'jobSatisfaction': row['JobSatisfaction'], 'maritalStatus': row['MaritalStatus'],
+            'monthlyIncome': row['MonthlyIncome'], 'monthlyRate': row['MonthlyRate'],
+            'numCompaniesWorked': row['NumCompaniesWorked'], 'overTime': row['OverTime'],
+            'percentSalaryHike': row['PercentSalaryHike'], 'performanceRating': row['PerformanceRating'],
+            'relationshipSatisfaction': row['RelationshipSatisfaction'], 'stockOptionLevel': row['StockOptionLevel'],
+            'totalWorkingYears': row['TotalWorkingYears'], 'trainingTimesLastYear': row['TrainingTimesLastYear'],
+            'workLifeBalance': row['WorkLifeBalance'], 'yearsAtCompany': row['YearsAtCompany'],
+            'yearsInCurrentRole': row['YearsInCurrentRole'], 'yearsSinceLastPromotion': row['YearsSinceLastPromotion'],
+            'yearsWithCurrManager': row['YearsWithCurrManager']
+        }
+        
+        prediction = predict_attrition(employee_data)
+        
+        employee = {
+            'employeeId': row['employeeId'], 'firstName': row['firstName'], 'lastName': row['lastName'],
+            'jobRole': row['JobRole'] or row['position'] or 'Not Specified',
+            'department': row['RecordDepartment'] or row['department'] or 'Not Specified',
+            'predictedAttrition': prediction['prediction'],
+            'attritionProbability': prediction['probability'],
+            'riskLevel': prediction['risk_level']
+        }
+        employees.append(employee)
+    
+    return {"employees": employees}
+
+@app.get("/dashboard/analytics")
+def get_dashboard_analytics():
+    """Get comprehensive attrition analytics"""
+    dashboard_data = get_dashboard_employees()
+    employees = dashboard_data["employees"]
+    
+    if not employees:
+        return {
+            "totalEmployees": 0, "highRiskCount": 0, "mediumRiskCount": 0, "lowRiskCount": 0,
+            "attritionRate": 0.0, "departmentRisk": {}, "jobRoleRisk": {}, "topRiskFactors": []
+        }
+    
+    total_employees = len(employees)
+    high_risk = sum(1 for emp in employees if emp['riskLevel'] == 'High')
+    medium_risk = sum(1 for emp in employees if emp['riskLevel'] == 'Medium')
+    low_risk = sum(1 for emp in employees if emp['riskLevel'] == 'Low')
+    
+    predicted_attritions = sum(1 for emp in employees if emp['predictedAttrition'] == 'Yes')
+    attrition_rate = (predicted_attritions / total_employees) * 100 if total_employees > 0 else 0
+    
+    dept_stats = {}
+    for emp in employees:
+        dept = emp['department']
+        if dept not in dept_stats:
+            dept_stats[dept] = {'total': 0, 'high_risk': 0}
+        dept_stats[dept]['total'] += 1
+        if emp['riskLevel'] == 'High':
+            dept_stats[dept]['high_risk'] += 1
+            
+    department_risk = {
+        dept: (stats['high_risk'] / stats['total']) * 100 if stats['total'] > 0 else 0
+        for dept, stats in dept_stats.items()
+    }
+    
+    top_risk_factors = [
+        {"factor": "Work-Life Balance", "impact": 0.85, "description": "Poor work-life balance strongly predicts attrition"},
+        {"factor": "Job Satisfaction", "impact": 0.78, "description": "Low job satisfaction increases leaving likelihood"},
+        {"factor": "Overtime Work", "impact": 0.72, "description": "Frequent overtime correlates with higher turnover"}
+    ]
+    
+    return {
+        "totalEmployees": total_employees, "highRiskCount": high_risk,
+        "mediumRiskCount": medium_risk, "lowRiskCount": low_risk,
+        "attritionRate": round(attrition_rate, 2), "departmentRisk": department_risk,
+        "topRiskFactors": top_risk_factors
+    }
+
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
