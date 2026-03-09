@@ -1,0 +1,4 @@
+/* src/styles/LoginPage.css */
+.main-container { padding: 20px; font-family: sans-serif; }
+.error-msg { color: red; }
+.success-msg { color: green; }
