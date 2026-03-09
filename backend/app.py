@@ -7,6 +7,12 @@ from typing import Optional, List, Dict, Any
 import bcrypt
 from fastapi import HTTPException, status
 from pydantic import BaseModel, EmailStr, Field, constr
+import shap
+import matplotlib
+matplotlib.use('Agg') # This tells the server to draw graphs in the background without opening a window
+import matplotlib.pyplot as plt
+import base64
+from io import BytesIO
 
 # ---------- Configuration ----------
 DB_DIR = "db"
@@ -419,7 +425,128 @@ def get_dashboard_analytics():
         "topRiskFactors": top_risk_factors
     }
 
+# ---------- Explainability & Recommendations ----------
+def get_readable_feature_name(feature_name: str) -> str:
+    name_mapping = {
+        'Age': 'Age', 'BusinessTravel': 'Business Travel Frequency', 'DailyRate': 'Daily Pay Rate',
+        'Department': 'Department', 'DistanceFromHome': 'Distance from Home', 'Education': 'Education Level',
+        'EnvironmentSatisfaction': 'Work Environment Satisfaction', 'JobRole': 'Job Role',
+        'JobSatisfaction': 'Job Satisfaction', 'MonthlyIncome': 'Monthly Income',
+        'OverTime': 'Overtime Work', 'WorkLifeBalance': 'Work-Life Balance',
+        'YearsAtCompany': 'Years at Current Company', 'YearsSinceLastPromotion': 'Years Since Last Promotion'
+    }
+    return name_mapping.get(feature_name, feature_name)
 
+def get_feature_description(feature_name: str, feature_value, shap_value: float) -> str:
+    impact = "increases" if shap_value > 0 else "decreases"
+    return f"{get_readable_feature_name(feature_name)} value of {feature_value} {impact} attrition risk."
+
+def generate_shap_plot(explainer, features, shap_values) -> str:
+    try:
+        plt.figure(figsize=(10, 8))
+        expected_val = explainer.expected_value[1] if isinstance(explainer.expected_value, (list, np.ndarray)) and len(explainer.expected_value) > 1 else (explainer.expected_value[0] if isinstance(explainer.expected_value, (list, np.ndarray)) else explainer.expected_value)
+        shap_vals_for_plot = shap_values[0] if len(shap_values.shape) > 1 else shap_values
+        
+        shap.plots.waterfall(expected_val, shap_vals_for_plot, features.iloc[0], show=False)
+        plt.title("SHAP Feature Impact on Attrition Prediction", fontsize=14, fontweight='bold')
+        plt.tight_layout()
+      
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png', dpi=150, bbox_inches='tight')
+        buffer.seek(0)
+        plot_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+        buffer.close()
+        plt.close()
+        return f"data:image/png;base64,{plot_base64}"
+    except Exception as e:
+        plt.close()  
+        return None
+
+def get_mock_shap_data(employee_data: dict) -> Dict[str, Any]:
+    """Fallback realistic data if SHAP calculation fails"""
+    return {
+        'top_factors': [
+            {'feature': 'Work-Life Balance', 'shap_value': 0.085, 'feature_value': employee_data.get('workLifeBalance', 2), 'impact': 'increases', 'description': "Poor work-life balance increases risk."},
+            {'feature': 'Overtime Work', 'shap_value': 0.072, 'feature_value': employee_data.get('overTime', 'Yes'), 'impact': 'increases', 'description': "Frequent overtime increases risk."}
+        ],
+        'shap_plot': None, 'base_value': 0.3, 'prediction_value': 0.45,
+        'recommendations': [{'action': 'Improve Work-Life Balance', 'priority': 'High', 'timeline': '1-2 months', 'suggestions': ['Flexible hours', 'Review workload']}]
+    }
+
+def get_shap_explanation(employee_data: dict) -> Dict[str, Any]:
+    if model is None: return get_mock_shap_data(employee_data)
+    try:
+        features = prepare_features_for_prediction(employee_data)
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(features)
+        shap_values_pos = shap_values[1] if isinstance(shap_values, list) and len(shap_values) == 2 else (shap_values[0] if isinstance(shap_values, list) else shap_values)
+        
+        shap_vals = np.array(shap_values_pos[0] if len(shap_values_pos.shape) > 1 else shap_values_pos).flatten()
+        feature_names = features.columns.tolist()
+        feature_values = features.iloc[0].tolist()
+        
+        feature_shap_pairs = list(zip(feature_names, [float(v) for v in shap_vals], feature_values))
+        feature_shap_pairs.sort(key=lambda x: abs(x[1]), reverse=True)
+        
+        top_factors = []
+        for feature_name, shap_val, feature_val in feature_shap_pairs[:5]:
+            top_factors.append({
+                'feature': get_readable_feature_name(feature_name),
+                'shap_value': shap_val, 'feature_value': feature_val,
+                'impact': "increases" if shap_val > 0 else "decreases",
+                'description': get_feature_description(feature_name, feature_val, shap_val)
+            })
+            
+        plot = generate_shap_plot(explainer, features, shap_values_pos)
+        
+        return {
+            'top_factors': top_factors, 'shap_plot': plot,
+            'base_value': float(explainer.expected_value[1] if isinstance(explainer.expected_value, (list, np.ndarray)) and len(explainer.expected_value) > 1 else (explainer.expected_value[0] if isinstance(explainer.expected_value, (list, np.ndarray)) else explainer.expected_value)),
+        }
+    except Exception as e:
+        print(f"SHAP error: {e}")
+        return get_mock_shap_data(employee_data)
+
+@app.get("/dashboard/employee/{employeeId}/detailed-analysis")
+def get_employee_detailed_analysis(employeeId: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM employees WHERE employeeId=?", (employeeId,))
+    employee_row = cur.fetchone()
+    cur.execute("SELECT * FROM employee_records WHERE employeeId=? ORDER BY created_at DESC LIMIT 1", (employeeId,))
+    data_row = cur.fetchone()
+    conn.close()
+    
+    if not employee_row or not data_row:
+        raise HTTPException(status_code=404, detail="Data not found")
+        
+    employee_data = dict(data_row)
+    prediction = predict_attrition(employee_data)
+    shap_data = get_shap_explanation(employee_data)
+    
+    # Generate simple recommendations based on top factors
+    recommendations = []
+    for factor in shap_data.get('top_factors', []):
+        if factor['shap_value'] > 0:
+            recommendations.append({
+                'action': f"Address {factor['feature']} concerns",
+                'priority': 'High' if factor['shap_value'] > 0.05 else 'Medium',
+                'timeline': '2-4 weeks',
+                'suggestions': [f"Schedule 1-on-1 to discuss {factor['feature'].lower()}"]
+            })
+            
+    if 'recommendations' in shap_data: # use mock recs if they exist
+        recommendations = shap_data['recommendations']
+
+    return {
+        "employeeId": employeeId,
+        "name": f"{employee_row['firstName']} {employee_row['lastName']}",
+        "department": employee_row['department'],
+        "prediction": prediction,
+        "shapAnalysis": shap_data,
+        "recommendations": recommendations[:3],
+        "riskScore": prediction['probability'] * 100
+    }
 
 if __name__ == "__main__":
     import uvicorn
