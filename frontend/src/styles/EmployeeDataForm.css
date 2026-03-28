@@ -1,0 +1,563 @@
+/* Employee Data Form Styles */
+
+/* Color Variables */
+:root {
+  --primary: #0066cc;        /* Deep blue */
+  --primary-dark: #004d99;
+  --primary-light: #3399ff;
+  --secondary: #00a86b;      /* Emerald green */
+  --secondary-dark: #008553;
+  --accent: #ff6b35;         /* Vibrant orange */
+  --accent-dark: #e55a2b;
+  --neutral-dark: #1a2b3c;
+  --neutral: #2d4059;
+  --neutral-light: #f0f5ff;
+  --neutral-border: #d1e0ff;
+  --success: #00a86b;
+  --warning: #ffa500;
+  --danger: #ff4d6d;
+  --info: #3399ff;
+}
+
+/* Container and layout */
+.employee-data-form .app-container {
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, var(--neutral-light) 0%, #e8f0ff 100%);
+}
+
+.employee-data-form .app-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at top left, rgba(0, 102, 204, 0.1) 0%, transparent 50%);
+}
+
+.employee-data-form .form-container {
+  max-width: 1400px; 
+  width: 100%;
+  margin: 2rem auto;
+  background: white;
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(26, 43, 60, 0.25);
+  border: 1px solid #f0f8ff;
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+  animation: employeeFormSlideUp 0.6s ease-out;
+}
+
+@keyframes employeeFormSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header Styles */
+.employee-data-form .form-header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  padding: 3rem 2.5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.employee-data-form .form-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ffffff" fill-opacity="0.05"><circle cx="30" cy="30" r="2"/></g></svg>');
+  pointer-events: none;
+}
+
+.employee-data-form .header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.employee-data-form .logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+}
+
+.employee-data-form .logo-icon {
+  width: 24px;
+  height: 24px;
+  color: #ffd700;
+}
+
+.employee-data-form .logout-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.employee-data-form .logout-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-0.125rem);
+}
+
+.employee-data-form .form-header h1 {
+  margin: 0 0 1rem 0;
+  font-size: 1.875rem;
+  font-weight: 800;
+  color: white;
+  position: relative;
+  z-index: 1;
+}
+
+.employee-data-form .form-header p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Progress Bar */
+.employee-data-form .progress-bar {
+  height: 6px;
+  background: #e8f0ff;
+  position: relative;
+  overflow: hidden;
+}
+
+.employee-data-form .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-shadow: 0 0 10px rgba(0, 102, 204, 0.5);
+}
+
+.employee-data-form .progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: employeeFormShimmer 2s infinite;
+}
+
+@keyframes employeeFormShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.employee-data-form .page-indicator {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--neutral);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* Form Pages */
+.employee-data-form .form-page {
+  padding: 0 3rem; 
+  animation: employeeFormFadeIn 0.4s ease-out;
+}
+
+@keyframes employeeFormFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.employee-data-form .page-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.employee-data-form .page-icon {
+  width: 56px;
+  height: 56px;
+  color: var(--primary);
+  margin-bottom: 1.25rem;
+  filter: drop-shadow(0 4px 8px rgba(0, 102, 204, 0.2));
+}
+
+.employee-data-form .page-header h2 {
+  margin: 0 0 0.75rem 0;
+  color: var(--neutral-dark);
+  font-size: 1.875rem;
+  font-weight: 800;
+}
+
+.employee-data-form .page-header p {
+  margin: 0;
+  color: var(--neutral);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* Form Grid */
+.employee-data-form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+  gap: 2rem; 
+  margin-bottom: 3rem;
+  max-width: none; 
+}
+
+@media (min-width: 1200px) {
+  .employee-data-form .form-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.employee-data-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.employee-data-form .form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--neutral-dark);
+  letter-spacing: 0.025em;
+}
+
+.employee-data-form .label-icon {
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+}
+
+.employee-data-form .form-input {
+  padding: 1rem;
+  border: 2px solid var(--neutral-border);
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: white;
+  color: var(--neutral-dark);
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.employee-data-form .form-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 10px 15px -3px rgba(0, 102, 204, 0.1), 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.employee-data-form .form-input:hover {
+  border-color: #a3c6ff;
+}
+
+.employee-data-form .form-input::placeholder {
+  color: #94a3b8;
+}
+
+.employee-data-form .form-input[disabled] {
+  background-color: var(--neutral-light);
+  color: var(--neutral);
+  border-color: var(--neutral-border);
+}
+
+/* Form Actions */
+.employee-data-form .form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3rem; 
+  border-top: 1px solid var(--neutral-border);
+  gap: 1.25rem;
+}
+
+.employee-data-form .btn {
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 140px;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.employee-data-form .btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.employee-data-form .btn:hover::before {
+  left: 100%;
+}
+
+.employee-data-form .btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  box-shadow: 0 4px 15px rgba(0, 102, 204, 0.3);
+}
+
+.employee-data-form .btn-primary:hover {
+  background: linear-gradient(135deg, var(--primary-dark), var(--secondary-dark));
+  transform: translateY(-0.125rem);
+  box-shadow: 0 20px 25px -5px rgba(0, 102, 204, 0.2);
+}
+
+.employee-data-form .btn-primary:active {
+  transform: translateY(-0.0625rem);
+}
+
+.employee-data-form .btn-secondary {
+  background: transparent;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+}
+
+.employee-data-form .btn-secondary:hover {
+  background: var(--primary);
+  color: white;
+  transform: translateY(-0.125rem);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
+}
+
+/* Custom Select Styling */
+.employee-data-form .form-input[type="select"],
+.employee-data-form select.form-input {
+  appearance: none;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8"><path fill="%230066cc" d="M6 8L0 2h12z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 12px;
+  padding-right: 3rem;
+}
+
+/* Form Validation */
+.employee-data-form .form-input:invalid {
+  border-color: var(--danger);
+}
+
+.employee-data-form .form-input:valid {
+  border-color: var(--success);
+}
+
+/* Loading States */
+.employee-data-form .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Focus Management */
+.employee-data-form .form-input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Loading spinner */
+.employee-data-form .loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+  gap: 1rem;
+}
+
+.employee-data-form .loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--neutral-border);
+  border-top: 3px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.employee-data-form .loading-text {
+  color: var(--neutral);
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .employee-data-form .form-container {
+    max-width: 1000px;
+  }
+  
+  .employee-data-form .form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .employee-data-form .app-container {
+    padding: 1rem;
+  }
+
+  .employee-data-form .form-container {
+    margin: 1rem auto;
+    max-width: none;
+  }
+
+  .employee-data-form .form-header {
+    padding: 2rem 1.5rem;
+  }
+
+  .employee-data-form .header-top {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .employee-data-form .logout-button {
+    align-self: center;
+  }
+
+  .employee-data-form .form-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .employee-data-form .form-page {
+    padding: 0 1.5rem;
+  }
+
+  .employee-data-form .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .employee-data-form .form-actions {
+    padding: 2rem 1.5rem;
+    flex-direction: column;
+  }
+
+  .employee-data-form .btn {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .employee-data-form .page-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .employee-data-form .page-icon {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .employee-data-form .app-container {
+    padding: 0.75rem;
+  }
+
+  .employee-data-form .form-container {
+    border-radius: 1rem;
+  }
+
+  .employee-data-form .form-header {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .employee-data-form .form-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .employee-data-form .form-page {
+    padding: 0 1.25rem;
+  }
+
+  .employee-data-form .form-grid {
+    gap: 1rem;
+  }
+
+  .employee-data-form .form-actions {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .employee-data-form .logo {
+    font-size: 1rem;
+  }
+
+  .employee-data-form .logout-button {
+    font-size: 0.75rem;
+    padding: 0.625rem 0.75rem;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .employee-data-form .form-input {
+    border-width: 3px;
+  }
+  
+  .employee-data-form .btn {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .employee-data-form * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
