@@ -153,6 +153,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+try:
+    model = joblib.load(MODEL_PATH)
+    print("✅ SUCCESS: Random Forest Model Loaded")
+except Exception as e:
+    print(f"❌ ERROR LOADING MODEL: {e}")
+    model = None
+
+try:
+    label_encoders = joblib.load(LABEL_ENCODERS_PATH)
+    print("✅ SUCCESS: Label Encoders Loaded")
+except Exception as e:
+    print(f"❌ ERROR LOADING ENCODERS: {e}")
+    label_encoders = None
+
+
 @app.on_event("startup")
 async def startup_event():
     ensure_db_exists()
@@ -232,13 +247,17 @@ def prepare_features_for_prediction(data: dict) -> pd.DataFrame:
     
     return features
 
+
 def predict_attrition(employee_data: dict) -> Dict[str, Any]:
     if model is None:
+        print("⚠️ Model is None - using mock prediction")
         return {'prediction': 'No', 'probability': 0.25, 'risk_level': 'Low', 'confidence': 0.75}
     try:
         features = prepare_features_for_prediction(employee_data)
         prediction = model.predict(features)[0]
         probability = model.predict_proba(features)[0]
+        
+        # Grab probability for 'Yes' (index 1)
         attrition_prob = probability[1] if len(probability) > 1 else probability[0]
         confidence = max(probability) if len(probability) > 1 else abs(0.5 - probability[0]) + 0.5
         
@@ -251,9 +270,10 @@ def predict_attrition(employee_data: dict) -> Dict[str, Any]:
             'confidence': float(confidence)
         }
     except Exception as e:
-        print(f"CRITICAL PREDICTION ERROR: {e}") # This will print the error in your terminal!
+        print(f"❌ CRITICAL PREDICTION ERROR: {e}")
         return {'prediction': 'No', 'probability': 0.25, 'risk_level': 'Low', 'confidence': 0.75}
-    
+
+
 # ---------- Label Mappings ----------
 LABEL_MAPS = {
     "Education": {"Below College": 1, "College": 2, "Bachelor": 3, "Master": 4, "Doctor": 5},
@@ -897,48 +917,46 @@ def get_feature_description(feature_name: str, feature_value, shap_value: float)
     
     return descriptions.get(feature_name, f"{get_readable_feature_name(feature_name)} value of {feature_value} {impact_direction} attrition risk")
 
+
 def generate_shap_plot(explainer, features, shap_values) -> str:
-    """Generate a SHAP waterfall plot and return as base64 encoded image"""
     try:
         plt.figure(figsize=(10, 8))
       
+        # Extract base value for 'Yes' class
         if isinstance(explainer.expected_value, (list, np.ndarray)):
-            if len(explainer.expected_value) > 1:
-                expected_val = explainer.expected_value[1]
-            else:
-                expected_val = explainer.expected_value[0]
+            expected_val = explainer.expected_value[1] if len(explainer.expected_value) > 1 else explainer.expected_value[0]
         else:
             expected_val = explainer.expected_value
         
-        if len(shap_values.shape) > 1:
-            shap_vals_for_plot = shap_values[0]
+        # FIX: Ensure we only get the 'Yes' class values (index 1)
+        if len(shap_values.shape) == 3: # shape (1, 30, 2)
+            shap_vals_for_plot = shap_values[0, :, 1]
+        elif len(shap_values.shape) == 2 and shap_values.shape[1] == 2: # shape (30, 2)
+            shap_vals_for_plot = shap_values[:, 1]
         else:
-            shap_vals_for_plot = shap_values
-        
-        
+            shap_vals_for_plot = shap_values[0] if len(shap_values.shape) > 1 else shap_values
+
         explanation = shap.Explanation(
             values=shap_vals_for_plot,
             base_values=expected_val,
             data=features.iloc[0].values,
             feature_names=features.columns.tolist()
         )
-        shap.plots.waterfall(explanation, show=False)
         
+        shap.plots.waterfall(explanation, show=False)
         plt.title("SHAP Feature Impact on Attrition Prediction", fontsize=14, fontweight='bold')
         plt.tight_layout()
       
         buffer = BytesIO()
         plt.savefig(buffer, format='png', dpi=150, bbox_inches='tight')
         buffer.seek(0)
-        plot_data = buffer.read()
+        plot_base64 = base64.b64encode(buffer.read()).decode('utf-8')
         buffer.close()
         plt.close()
        
-        plot_base64 = base64.b64encode(plot_data).decode('utf-8')
         return f"data:image/png;base64,{plot_base64}"
-        
     except Exception as e:
-        print(f"Error generating SHAP plot: {e}")
+        print(f"❌ SHAP PLOT ERROR: {e}")
         plt.close()  
         return None
 
@@ -1191,47 +1209,6 @@ def get_retention_recommendation(feature: str, factor: Dict, employee_data: Dict
         'timeline': '2-4 weeks'
     })
 
-def predict_attrition(employee_data: dict) -> Dict[str, Any]:
-    """Predict employee attrition with SHAP explanations"""
-    if model is None:
-        return {
-            'prediction': 'No',
-            'probability': 0.25,
-            'risk_level': 'Low',
-            'confidence': 0.75
-        }
-    
-    try:
-        features = prepare_features_for_prediction(employee_data)
-        
-        prediction = model.predict(features)[0]
-        probability = model.predict_proba(features)[0]
-        
-        attrition_prob = probability[1] if len(probability) > 1 else probability[0]
-        
-        confidence = max(probability) if len(probability) > 1 else abs(0.5 - probability[0]) + 0.5
-        
-        if attrition_prob >= 0.7:
-            risk_level = 'High'
-        elif attrition_prob >= 0.4:
-            risk_level = 'Medium'
-        else:
-            risk_level = 'Low'
-        
-        return {
-            'prediction': 'Yes' if prediction == 1 else 'No',
-            'probability': float(attrition_prob),
-            'risk_level': risk_level,
-            'confidence': float(confidence)
-        }
-    except Exception as e:
-        print(f"Prediction error: {e}")
-        return {
-            'prediction': 'No',
-            'probability': 0.25,
-            'risk_level': 'Low',
-            'confidence': 0.75
-        }
 
 if __name__ == "__main__":
     import uvicorn
