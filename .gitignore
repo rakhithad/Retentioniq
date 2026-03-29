@@ -2,9 +2,18 @@
 venv/
 .env
 
+__pycache__/
+*.pyc
+
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
 # Datasets and generated model files
 *.csv
 *.pkl
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+employees.db

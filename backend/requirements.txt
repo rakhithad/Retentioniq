@@ -10,3 +10,6 @@ seaborn>=0.13
 scikit-learn>=1.4
 imbalanced-learn>=0.12
 shap
+joblib
+python-multipart
+pydantic[email]
